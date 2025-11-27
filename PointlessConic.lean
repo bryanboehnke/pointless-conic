@@ -201,10 +201,9 @@ theorem strongind (n : ℕ) : ∀(x : ℕ) (_ : x < n), ¬∃(y z: ℤ) (_ : y�
             have oneside : n^2+y^2-3*z^2 = 0 := by
               exact Int.sub_eq_zero.mpr h
 
-            rw [hk, hl, hm] at oneside
-            ring_nf at oneside
-
             have hred : 4*(k^2+l^2-3*m^2) = 0 := by
+              rw [hk, hl, hm] at oneside
+              ring_nf at oneside
               ring_nf
               exact oneside
 
@@ -217,20 +216,15 @@ theorem strongind (n : ℕ) : ∀(x : ℕ) (_ : x < n), ¬∃(y z: ℤ) (_ : y�
             have hdesired : k^2 + l^2 = 3*m^2 := by
               exact Int.eq_of_sub_eq_zero hdiv
 
-            have ngeq0 : n ≥ 0 := by
-              exact Nat.zero_le n
-
             have ncases : n > 0 ∨ n = 0 := by
               exact Or.symm (Nat.eq_zero_or_pos n)
 
-            rcases ncases with hnge0 | neq0
+            rcases ncases with nge0 | neq0
             -- if n > 0, then k < n and we can use the induction hypothesis
-            · have hnge0coe : (n : ℤ) > 0 := by
-                exact Int.natCast_pos.mpr hnge0
-
-              have kge0 : k > 0 := by
-                rw [hk] at hnge0coe
-                exact pos_add_self_iff.mp hnge0coe
+            · have kge0 : k > 0 := by
+                apply Int.natCast_pos.mpr at nge0
+                rw [hk] at nge0
+                exact pos_add_self_iff.mp nge0
 
               have coe : (Int.toNat k) = k := by
                 refine Int.toNat_of_nonneg ?_
@@ -240,11 +234,9 @@ theorem strongind (n : ℕ) : ∀(x : ℕ) (_ : x < n), ¬∃(y z: ℤ) (_ : y�
                 rw [hk]
                 linarith
 
-              have knatlen : (Int.toNat k) < n:= by
-                exact (Int.toNat_lt' hnge0).mpr klen
-
+              -- since k < n, we can apply the inductive hypothesis
               apply hn (Int.toNat k)
-              · use knatlen -- Int.toNat k < n
+              · use (Int.toNat_lt' nge0).mpr klen -- Int.toNat k < n
               use l
               use m
               use lne0
@@ -257,11 +249,7 @@ theorem strongind (n : ℕ) : ∀(x : ℕ) (_ : x < n), ¬∃(y z: ℤ) (_ : y�
             ring_nf at h
 
             have ratcoe : (y:ℚ)^2 = (z:ℚ)^2 * 3 := by
-              -- rw [← Rat.cast_mul (z^2) 3]
-              rw [← Rat.intCast_inj, Rat.intCast_mul] at h
-              repeat rw [Rat.intCast_pow] at h
-              exact h
-
+              norm_cast
 
             have z2coene0 : (z:ℚ)^2 ≠ 0 := by
               exact pow_ne_zero 2 (Rat.num_ne_zero.mp zne)
@@ -271,8 +259,10 @@ theorem strongind (n : ℕ) : ∀(x : ℕ) (_ : x < n), ¬∃(y z: ℤ) (_ : y�
               exact Eq.symm (CancelDenoms.cancel_factors_eq_div (id (Eq.symm ratcoe)) z2coene0)
 
             apply sqrt3irrational
-            use y/z
+            use y/z -- this concludes the case where n, y, and z are all zero mod 4.
 
+      -- the remaining cases reach 'trivial' contradictions
+      -- when not all of n, y, and z are zero mod 4
           · rw [hn0, hy0, hz1] at hmod4
             trivial
         · rcases mod4squares z with (hz0 | hz1)
@@ -308,33 +298,27 @@ theorem nointegersolutions2 : ¬∃(x y z: ℤ) (_: x ≠ 0) (_ : y≠ 0) (_: z�
   rcases h with ⟨x, y, z, xnz, ynz, znz, heq⟩
 
   -- x, a nonzero integer is nonnegative or negative
-  rcases x with x | x
+  rcases x with x | a
 
-  -- if x = m (nonneg) natural number, then it is zero or equal to succ a
-  · rcases x with zero | x
+  -- if x is a (nonneg) natural number, then it is zero or equal to succ a
+  · rcases x with zero | a
     -- if x = 0, then the hypotheses are not met
     · trivial
-    -- if x > 0, then should be able to apply nointsolnsind
-    · have xnzcoe : (x + 1 ≠ 0) := by
-        exact fun a ↦ xnz (congrArg Int.ofNat a)
-      apply nointsolnsinduction (x+1) xnzcoe
+    -- if x = a + 1 > 0, then apply nointsolnsinduction
+    · apply nointsolnsinduction (a+1) (Ne.symm (Nat.zero_ne_add_one a)) -- x = a + 1 ≠ 0
       use y
       use z
       use ynz
       use znz
       exact heq
 
-
-  -- if x < 0, ...
+  -- if x = -(a+1) < 0, ...
   · rw[Int.negSucc_eq] at *
-
-    have xnzposcoe : (x+1 ≠ 0) := by
-      exact Ne.symm (Nat.zero_ne_add_one x)
-
-    have heq2 : Int.ofNat (x + 1) ^ 2 + y ^ 2 = 3 * z ^ 2 := by
+    -- use that (-(a+1))^2 = (a+1)^2 to reduce to the same case as when x > 0
+    have heq2 : Int.ofNat (a + 1) ^ 2 + y ^ 2 = 3 * z ^ 2 := by
       exact heq
 
-    apply nointsolnsinduction (x+1) xnzposcoe
+    apply nointsolnsinduction (a+1) (Ne.symm (Nat.zero_ne_add_one a))
     use y
     use z
     use ynz
@@ -385,15 +369,12 @@ theorem norationalsolutions : ¬∃(x y : ℚ), x^2 + y^2 = (3: ℚ) := by
   have hy : y = c/d := by
     exact Eq.symm (Rat.num_div_den y)
 
-  -- rewrite heq in terms of a, b, c, and d (computations treating a,b,c,d as rationals for now)
-  have heq2 : (a:ℚ)^2/(b:ℚ)^2 + (c:ℚ)^2/(d:ℚ)^2 = (3:ℚ) := by
+  have heq2: ((a:ℚ)^2/(b:ℚ)^2 + (c:ℚ)^2/(d:ℚ)^2 ) * (↑b ^ 2 * ↑d ^ 2) = 3 * (b ^ 2 * d ^ 2) := by
+    -- rewrite heq in terms of a, b, c, and d (computations treating a,b,c,d as rationals for now)
     rw [hx, hy] at heq
     repeat rw [div_pow] at heq
-    exact heq
-
-  -- multiply both sides by b^2 * d^2
-  have heq3: ((a:ℚ)^2/(b:ℚ)^2 + (c:ℚ)^2/(d:ℚ)^2 ) * (↑b ^ 2 * ↑d ^ 2) = 3 * (b ^ 2 * d ^ 2) := by
-    apply Mathlib.Tactic.LinearCombination.mul_eq_const heq2 (b^2* d^2)
+    -- then multiply both sides by b^2 * d^2
+    apply Mathlib.Tactic.LinearCombination.mul_eq_const heq (b^2* d^2)
 
   -- to clear denominators, need to ensure that b^2, d^2 ≠ 0
   have b2neq0: (b:ℚ)^2 ≠ 0 := by
@@ -404,36 +385,35 @@ theorem norationalsolutions : ¬∃(x y : ℚ), x^2 + y^2 = (3: ℚ) := by
     norm_cast
     exact pow_ne_zero 2 dneq0
 
-  -- clear denominators
-  have heq4 : ((a:ℚ)^2 * (d:ℚ)^2 + (c:ℚ)^2 * (b:ℚ)^2) = 3 * ((b:ℚ)^2 * (d:ℚ)^2) := by
-    ring_nf at heq3
-    simp at heq3
-    nth_rewrite 2 [mul_assoc] at heq3
-    rw[Rat.mul_inv_cancel (↑b ^ 2)] at heq3
-    · rw[mul_one] at heq3 -- cancelling b^2 requires b^2 ≠ 0
-      nth_rewrite 1 [mul_assoc] at heq3
-      rw[Rat.mul_inv_cancel (↑d ^ 2)] at heq3
-      · rw[mul_one] at heq3 -- cancelling d^2 requires d^2 ≠ 0
-        nth_rewrite 2 [mul_comm] at heq3
-        nth_rewrite 3 [mul_comm] at heq3
-        exact heq3
+  -- clear denominators, and rewrite equation in terms of integers
+  have heq3 : (a*d)^2 + (c*b)^2 = 3 * (b*d)^2 := by
+    rw [hx, hy] at heq
+    repeat rw [div_pow] at heq
+    ring_nf at heq2
+    simp at heq2
+    nth_rewrite 2 [mul_assoc] at heq2
+    rw[Rat.mul_inv_cancel (↑b ^ 2)] at heq2
+    · rw[mul_one] at heq2 -- cancelling b^2 requires b^2 ≠ 0
+      nth_rewrite 1 [mul_assoc] at heq2
+      rw[Rat.mul_inv_cancel (↑d ^ 2)] at heq2
+      · rw[mul_one] at heq2 -- cancelling d^2 requires d^2 ≠ 0
+        nth_rewrite 2 [mul_comm] at heq2
+        nth_rewrite 3 [mul_comm] at heq2
+        -- exact heq3
+        ring_nf
+        ring_nf at heq2
+        norm_cast at heq2
       -- d^2 ≠ 0
       exact d2neq0
     -- b^2 ≠ 0
     exact b2neq0
-
-  -- rewrite equation in terms of integers
-  have heq5 : (a*d)^2 + (c*b)^2 = 3 * (b*d)^2 := by
-    ring_nf
-    ring_nf at heq4
-    norm_cast at heq4
 
   let l := a*d
   let m := c*b
   let n := (b*d:ℤ)
 
   have hcontra : l^2 + m^2 = 3 * n^2 := by
-    exact heq5
+    exact heq3
 
   -- verify that each of l, m, and n are nonzero to apply "nointegersolutions2"
   have lneq0 : l ≠ 0 := by
